@@ -1,0 +1,22 @@
+# Virtual environment
+.venv/
+
+# Python cache/artifacts
+__pycache__/
+*.pyc
+
+# Deep learning model/tensor artifacts
+*.pt
+*.pth
+
+# Local datasets/cache
+wmdp_translated/
+dataset_cache/
+
+# LoRA adapters/checkpoints
+reinforced_adapter/
+unlearned_adapter/
+final_unlearned_adapter/
+
+# OS/system files
+.DS_Store
