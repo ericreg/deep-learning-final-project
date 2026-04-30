@@ -1,23 +1,81 @@
-# Targeted Unlearning via Discrepancy Minimization
+# WMDP-Cyber Approximate Unlearning Hello World
 
-## 1. Project Objective
-This project studies targeted unlearning on meta-llama/Meta-Llama-3-8B-Instruct to remove hazardous biological and cybersecurity knowledge while preserving general language-model utility. The core method is Discrepancy Minimization, where optimization is driven by Kullback-Leibler divergence against a dynamically constructed generic probability distribution that suppresses hazardous responses without broad catastrophic forgetting.
+This repo contains a small prototype of the approximate unlearning recipe from
+`docs/harry_potter.pdf`, scored against WMDP-Cyber from `docs/wdmp.pdf`.
 
-## 2. Hardware & Environment
-- Hardware Limit: 1x NVIDIA RTX 3090 (24GB VRAM).
-- Quantization: 4-bit NormalFloat (NF4) via bitsandbytes.
-- Frameworks: PyTorch, Hugging Face transformers, peft, datasets.
+The implementation intentionally uses WMDP-Cyber benchmark questions for
+evaluation only. Training data comes from the official WMDP cyber forget/retain
+corpora, not from `cais/wmdp` benchmark rows.
 
-## 3. Pipeline Architecture
-- 00_preflight.sh: Validates GPU visibility/VRAM constraints and confirms Hugging Face gated model access before any expensive run.
-- 01_profile_model.py: Runs a controlled NF4 + LoRA memory telemetry pass to measure peak allocation and verify the configuration fits 24GB VRAM.
-- 02_prepare_data.py: Downloads, normalizes, and merges cais/wmdp subsets wmdp-bio and wmdp-cyber into a unified training/evaluation stream.
-- 03_baseline_eval.py: Establishes pre-intervention utility baselines on ARC Challenge, BoolQ, and WinoGrande using lm-evaluation-harness.
-- 04_train_reinforced.py: Trains a reinforced LoRA adapter that intentionally amplifies hazardous domain salience for discrepancy construction.
-- 05a_extract_entities.py & 05_translate_data.py: Uses an NLTK POS pipeline to extract Out-of-Distribution technical nouns and map them to generic hypernyms to build x_translated.
-- 08_dynamic_unlearn.py: Executes dynamic PEFT multi-adapter switching to compute the KL-target distribution online and optimize unlearning without full-logit disk caching under tight VRAM constraints. Note: Scripts 06 and 07 were static-caching proofs-of-concept and are deprecated.
+## Environment
 
-## 4. Parallel Workstreams
-- Optimization (Current): Tune the dynamic unlearning loop, including alpha penalty scaling, learning rate stability, and gradient accumulation behavior.
-- Evaluation (Pending): Integrate WMDP multiple-choice evaluation into lm-evaluation-harness to quantify targeted forgetting versus retained general utility.
-- Red Teaming (Pending): Build jailbreak and representation-space stress tests to validate that hazardous knowledge is functionally erased rather than superficially masked.
+Use Python 3.11 or 3.12. The system Python in this workspace may be newer than
+the PyTorch stack supports.
+
+```bash
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -e ".[dev,eval,cuda]"
+```
+
+For ROCm, install the ROCm-enabled PyTorch wheel that matches your ROCm
+runtime first, then install the project without the CUDA extra:
+
+```bash
+# Pick the exact ROCm index URL from the PyTorch install selector for your system.
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocmX.Y
+uv pip install -e ".[dev,eval]"
+```
+
+Set a Hugging Face token with access to `meta-llama/Meta-Llama-3-8B-Instruct`:
+
+```bash
+export HF_TOKEN=...
+```
+
+## Commands
+
+```bash
+unlearning-demo preflight
+unlearning-demo prepare
+unlearning-demo reinforce
+unlearning-demo unlearn
+unlearning-demo score --adapter none
+unlearning-demo score --adapter outputs/unlearn_adapter
+unlearning-demo retain-eval --adapter outputs/unlearn_adapter
+unlearning-demo report
+```
+
+On ROCm, disable the CUDA-oriented bitsandbytes 4-bit path:
+
+```bash
+unlearning-demo preflight --no-4bit
+unlearning-demo score --no-4bit --adapter none
+unlearning-demo reinforce --no-4bit
+unlearning-demo unlearn --no-4bit
+unlearning-demo score --no-4bit --adapter outputs/unlearn_adapter
+```
+
+For a dependency-light local check that does not require Llama, an accelerator, or WMDP:
+
+```bash
+python -m pytest
+unlearning-demo smoke
+```
+
+## What This Prototype Does
+
+1. Loads official WMDP cyber forget/retain corpora.
+2. Trains a reinforced LoRA adapter on cyber forget text.
+3. Builds generic translated versions of forget samples by replacing
+   domain-specific anchor terms with generic placeholders.
+4. Computes soft generic targets with:
+
+   `v_generic = v_baseline_translated - alpha * relu(v_reinforced_original - v_baseline_translated)`
+
+5. Trains a fresh LoRA adapter toward those generic targets.
+6. Scores baseline/reinforced/unlearned models on the WMDP-Cyber `test` split
+   with zero-shot four-choice log-likelihood over `A/B/C/D`.
+
+This is a mechanics-first prototype, not evidence of robust hazardous-knowledge
+removal.

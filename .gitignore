@@ -4,10 +4,12 @@
 # Python cache/artifacts
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # Deep learning model/tensor artifacts
 *.pt
 *.pth
+outputs/
 
 # Local datasets/cache
 wmdp_translated/
