@@ -15,9 +15,5 @@ This project studies targeted unlearning on meta-llama/Meta-Llama-3-8B-Instruct 
 - 03_baseline_eval.py: Establishes pre-intervention utility baselines on ARC Challenge, BoolQ, and WinoGrande using lm-evaluation-harness.
 - 04_train_reinforced.py: Trains a reinforced LoRA adapter that intentionally amplifies hazardous domain salience for discrepancy construction.
 - 05a_extract_entities.py & 05_translate_data.py: Uses an NLTK POS pipeline to extract Out-of-Distribution technical nouns and map them to generic hypernyms to build x_translated.
-- 08_dynamic_unlearn.py: Executes dynamic PEFT multi-adapter switching to compute the KL-target distribution online and optimize unlearning without full-logit disk caching under tight VRAM constraints. Note: Scripts 06 and 07 were static-caching proofs-of-concept and are deprecated.
-
-## 4. Parallel Workstreams
-- Optimization (Current): Tune the dynamic unlearning loop, including alpha penalty scaling, learning rate stability, and gradient accumulation behavior.
-- Evaluation (Pending): Integrate WMDP multiple-choice evaluation into lm-evaluation-harness to quantify targeted forgetting versus retained general utility.
-- Red Teaming (Pending): Build jailbreak and representation-space stress tests to validate that hazardous knowledge is functionally erased rather than superficially masked.
+- 08_dynamic_unlearn.py: Executes dynamic PEFT multi-adapter switching to compute the KL-target distribution online and optimize unlearning under tight VRAM constraints using specific targeted discrepancy multipliers.
+- 09_eval_unlearned.py: Rapid post-unlearning evaluation on lm-eval to measure the exact drop in hazardous knowledge vs preservation of generic utility, validating the success of the phase 3 dynamic optimization.

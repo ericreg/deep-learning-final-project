@@ -8,6 +8,7 @@ __pycache__/
 # Deep learning model/tensor artifacts
 *.pt
 *.pth
+*.safetensors
 
 # Local datasets/cache
 wmdp_translated/
@@ -17,6 +18,12 @@ dataset_cache/
 reinforced_adapter/
 unlearned_adapter/
 final_unlearned_adapter/
+reinforced_adapter_checkpoints/
 
 # OS/system files
 .DS_Store
+
+# Zip archives and logs
+*.zip
+logs/
+

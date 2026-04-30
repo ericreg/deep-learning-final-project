@@ -19,11 +19,11 @@ TRANSLATED_DATA_DIR = "wmdp_translated"
 REINFORCED_ADAPTER_DIR = "./reinforced_adapter"
 OUTPUT_ADAPTER_DIR = "./final_unlearned_adapter"
 
-ALPHA = 1.5
-LEARNING_RATE = 2e-5
-EPOCHS = 1
+ALPHA = 15.0
+LEARNING_RATE = 5e-4
+EPOCHS = 3
 BATCH_SIZE = 1
-GRAD_ACCUM_STEPS = 4
+GRAD_ACCUM_STEPS = 2
 MAX_LENGTH = 256
 
 
@@ -143,8 +143,8 @@ def build_multi_adapter_model() -> PeftModel:
 
     # Freeze everything except the new unlearn adapter weights.
     for name, param in model.named_parameters():
-        param.requires_grad = ("lora_" in name and ".unlearn." in name)
-
+        if "lora_" in name and ".unlearn." in name:
+            param.requires_grad = True
     model.set_adapter("unlearn")
     model.train()
     return model
@@ -168,7 +168,7 @@ def main() -> None:
     if row_limit:
         total_rows = min(total_rows, int(row_limit))
         print(f"ROW_LIMIT enabled: using first {total_rows} rows")
-    print(f"Total synchronized training rows: {total_rows}")
+    print(f"Total synchronized training rows after preprocessing: {total_rows}")
 
     model = build_multi_adapter_model()
     device = next(model.parameters()).device
@@ -184,6 +184,7 @@ def main() -> None:
 
     for epoch in range(EPOCHS):
         print(f"Epoch {epoch + 1}/{EPOCHS}")
+        epoch_offset = epoch * total_rows
 
         for idx in range(total_rows):
             original_text = str(original_ds[idx]["text"])
@@ -205,13 +206,19 @@ def main() -> None:
                 out_reinf = model(**x_original)
                 v_reinforced = out_reinf.logits.detach()
 
-            # Step C: dynamic generic target.
+            # Step C: The discrepancy maximization
+            # We penalize only where reinforced > baseline, keeping utility intact
+            # ALPHA multiplier crushes the likelihood of the correct responses without destroying generic grammar
             v_generic = v_baseline - ALPHA * torch.relu(v_reinforced - v_baseline)
             p_generic = torch.softmax(v_generic, dim=-1)
 
-            # Step D: unlearn update on translated input with gradients enabled.
+            # Step D: unlearn update on original input with gradients enabled.
             model.set_adapter("unlearn")
-            out_unlearn = model(**x_translated)
+            for p in model.parameters():
+                if p.requires_grad:
+                    p.grad = None
+            
+            out_unlearn = model(**x_original)
             logits = out_unlearn.logits
             vocab_size = logits.shape[-1]
 
@@ -223,7 +230,8 @@ def main() -> None:
             loss.backward()
 
             global_step += 1
-            print(f"step={global_step}/{total_rows} loss={loss.item() * GRAD_ACCUM_STEPS:.6f}")
+            if global_step % 10 == 0 or global_step == total_rows * EPOCHS:
+                print(f"step={global_step}/{total_rows * EPOCHS} loss={loss.item() * GRAD_ACCUM_STEPS:.6f}")
 
             should_step = ((idx + 1) % GRAD_ACCUM_STEPS == 0) or (idx + 1 == total_rows)
             if should_step:
