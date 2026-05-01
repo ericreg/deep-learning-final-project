@@ -1,4 +1,21 @@
 import fitz  # PyMuPDF
+from sentence_transformers import SentenceTransformer
+import numpy as np
+
+import re
+import nltk
+from scipy.spatial.distance import cosine
+
+# Run these once to download the necessary data
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('omw-1.4')
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+from transformers import pipeline
+import torch
+
 
 def extract_text_from_pdf(pdf_path):
     """
@@ -13,16 +30,223 @@ def extract_text_from_pdf(pdf_path):
                 # Load the individual page
                 page = doc.load_page(page_num)
 
-                page_content.append(page.get_text())
+                page_text = page.get_text().strip()
+                if page_text:  # Only add non-empty pages
+                    page_content.append(page.get_text())
         
         return page_content
 
     except Exception as e:
         return f"An error occurred: {e}"
 
-# Example Usage:
-pages = extract_text_from_pdf("hp1.pdf")
-for i, page in enumerate(pages):
-    print(f"Page {i + 1}:\n")
-    print(page + "\n" + "-"*40 + "\n")
 
+def clean_text(text):
+
+    # Remove non-alphabetical characters (punctuation/numbers)
+    text = re.sub(r'[^a-zA-Z\s]', '', text)
+    
+    # Lowercase and split into words
+    return text.lower().split()
+
+
+def chunk_text(corpus: list[list[str]], chunk_size: int = 300) -> list [str]:
+    """
+    Breaks down a list of strings into smaller chunks of a specified size.
+    """
+
+    chunks = []
+    words = []
+
+    for page in corpus:
+
+        # get the words in the current page
+        words += page
+
+        if len(words) >= chunk_size:
+
+            # if the current text has enough words. keep add chunks until we have less than the chunk size
+            while len(words) >= chunk_size:
+                # add the first chunk_size words as a chunk
+                chunks.append(" ".join(words[:chunk_size]))
+
+                # remove the chunked words from the current text
+                words = words[chunk_size:]
+
+    return chunks
+
+
+def find_semantic_surprisal(chunks, model_name):
+    """
+    Takes a list of text chunks (strings) in chronological order 
+    and returns the 'Surprisal Score' for each chunk.
+    """
+
+    # all-MiniLM-L6-v2,90 MB,256 / 512,"Rapid prototyping, laptops, CPU-only"
+    # all-mpnet-base-v2,420 MB,512,High-accuracy general English text
+    # BAAI/bge-base-en-v1.5,440 MB,512,Maximum leaderboard performance
+    # nomic-embed-text-v1.5,550 MB,"8,192",Long chunks (multi-paragraph or whole chapters)
+
+    # 1. Automatically detect the best available hardware
+    if torch.cuda.is_available():
+        device = 'cuda'  # NVIDIA GPU
+    elif torch.backends.mps.is_available():
+        device = 'mps'   # Apple Silicon (M1/M2/M3/M4)
+    else:
+        device = 'cpu'   # Fallback
+
+    print(f"Loading model on: {device}")
+
+    # Load a fast, lightweight BERT model
+    model = SentenceTransformer(model_name, device=device)
+
+    # 3. Encode in batches to maximize GPU parallel processing
+    # Adjust batch_size (32, 64, 128) based on your GPU's VRAM
+    embeddings = model.encode(
+        chunks, 
+        batch_size=256, 
+        show_progress_bar=True # Helpful to see the speed
+    )
+        
+    surprisal_scores = [0.0] # The first chunk has nothing to compare to
+    
+    # 2. Compare each chunk to the one right before it
+    for i in range(1, len(embeddings)):
+        vector_current = embeddings[i]
+        vector_previous = embeddings[i-1]
+        
+        # Cosine distance ranges from 0 (identical) to 2 (opposites)
+        # Higher distance = Higher surprisal = Potential Plot Twist
+        distance = cosine(vector_previous, vector_current)
+        surprisal_scores.append(distance)
+        
+    return surprisal_scores
+
+
+
+def find_emotion_volatility(chunks):
+    """
+    Scores each chunk for 7 emotions and calculates the volatility 
+    (the shift in emotion) from the previous chunk.
+    """
+    
+    # Use GPU if available, otherwise fallback to CPU
+    device_id = 0 if torch.cuda.is_available() else -1
+    
+    # Load the Hartmann Emotion model
+    # top_k=None forces the model to return probabilities for ALL 7 emotions, not just the top 1
+    classifier = pipeline(
+        "text-classification", 
+        model="j-hartmann/emotion-english-distilroberta-base", 
+        top_k=None, 
+        device=device_id
+    )
+
+    # Process in batches. Truncation ensures chunks over 512 tokens don't crash the model
+    raw_scores = classifier(chunks, batch_size=64, truncation=True, max_length=512, show_progress_bar=True)
+    
+    emotion_vectors = []
+    dominant_emotions = []
+    
+    for chunk_scores in raw_scores:
+        
+        # The model returns a list of dicts. We sort them alphabetically by label 
+        # (anger, disgust, fear...) so our vectors always align perfectly.
+        chunk_scores.sort(key=lambda x: x['label'])
+        
+        # Extract the probability values (0.0 to 1.0) into a list
+        probs = [d['score'] for d in chunk_scores]
+        emotion_vectors.append(probs)
+        
+        # Keep track of the strongest emotion for our output text
+        dominant = max(chunk_scores, key=lambda x: x['score'])['label']
+        dominant_emotions.append(dominant)
+        
+    # Calculate Volatility (Cosine distance between N and N-1)
+    volatility_scores = [0.0] 
+    
+    for i in range(1, len(emotion_vectors)):
+        vec_current = emotion_vectors[i]
+        vec_previous = emotion_vectors[i-1]
+        
+        distance = cosine(vec_previous, vec_current)
+        volatility_scores.append(distance)
+        
+    return volatility_scores, dominant_emotions
+
+
+
+def main():
+    # Example Usage:
+    pages = extract_text_from_pdf("hp1.pdf")
+
+    # clean and normalize the text
+    corpus = [x.split() for x in pages]
+
+    # break the text into smaller chunks (e.g., 150 words each)
+    chunks = chunk_text(corpus, chunk_size=150)
+
+
+    models = [
+        # 'all-MiniLM-L6-v2', # 90 MB, 256 / 512, default
+        # 'all-mpnet-base-v2', # 420 MB, 512, High-accuracy general English text
+        # 'BAAI/bge-base-en-v1.5', # 440 MB, 512, Maximum leaderboard performance
+        # 'nomic-ai/nomic-embed-text-v1.5', # 550 MB, 8,192, Long chunks (multi-paragraph or whole chapters)
+        "emotion"
+    ]
+
+
+    for model_name in models:
+
+        print("Evaluating model:", model_name)
+
+        # calculate the surprisal scores for each chunk
+        # surpisal_scores = find_semantic_surprisal(chunks, model_name)
+        volatility_scores, dominant_emotions = find_emotion_volatility(chunks)
+
+        # Filter out outliers using the 0.5 and 99.5 percentiles
+        p_bottom, p_top = np.percentile(volatility_scores, [0.5, 99.5])
+        filtered_indexed = [(i, s) for i, s in enumerate(volatility_scores) if p_bottom <= s <= p_top]
+
+        # Rank the chunks by volatility score (highest first)
+        ranked = sorted(filtered_indexed, key=lambda x: x[1], reverse=True)
+
+        output_file = f"volatility_results_{model_name.replace('/', '_')}.txt"
+        with open(output_file, 'w') as f:
+            f.write("TOP 5:\n")
+            for rank, (i, score) in enumerate(ranked[:5], 1):
+                f.write(f"\n[#{rank} | chunk {i} | volatility={score:.4f}]\n")
+                f.write(f"Dominant Emotions: {dominant_emotions[i]}\n")
+                f.write(chunks[i] + "\n")
+
+            f.write(f"BOTTOM 5:\n")
+            for rank, (i, score) in enumerate(ranked[-5:][::-1], 1):
+                f.write(f"\n[#{rank} | chunk {i} | volatility={score:.4f}]\n")
+                f.write(f"Dominant Emotions: {dominant_emotions[i]}\n") 
+                f.write(chunks[i] + "\n")
+
+            # print out the 5 chunks closests to the mean volatility score
+            mean_score = sum(volatility_scores) / len(volatility_scores)
+            ranked_by_distance_to_mean = sorted(enumerate(volatility_scores), key=lambda x: abs(x[1] - mean_score))
+
+            f.write(f"MEAN 5:\n")
+            for rank, (i, score) in enumerate(ranked_by_distance_to_mean[:5], 1):
+                f.write(f"\n[#{rank} | chunk {i} | volatility={score:.4f}]\n")
+                f.write(f"Dominant Emotions: {dominant_emotions[i]}\n")
+                f.write(chunks[i] + "\n")
+
+
+        # plot the distribution of volatility scores
+        fig, ax = plt.subplots()
+        sns.histplot([x[1] for x in filtered_indexed], bins=30, kde=True, ax=ax)
+        ax.set_xlabel("Volatility Score (cosine distance)")
+        ax.set_ylabel("Count")
+        ax.set_title(f"Volatility Score Distribution — {model_name}")
+        fig.tight_layout()
+        fig.savefig("volatility_distribution_{}.png".format(model_name.replace('/', '_')))
+        plt.show()
+        plt.close(fig)
+
+
+
+if __name__ == "__main__":
+    main()
