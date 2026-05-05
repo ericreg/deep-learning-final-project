@@ -12,7 +12,7 @@ from lm_eval import evaluator
 MODEL_NAME = "meta-llama/Meta-Llama-3-8B-Instruct"
 PROJECT_ROOT = Path(__file__).resolve().parent
 ADAPTER_PATH = str(PROJECT_ROOT / "final_unlearned_adapter" / "unlearn")
-TASKS = ["wmdp-bio", "wmdp-cyber", "arc_easy", "boolq", "winogrande"]
+TASKS = ["wmdp-bio", "wmdp-cyber", "arc_challenge", "boolq", "winogrande"]
 LIMIT = 100
 
 

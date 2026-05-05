@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Phase 3 dynamic unlearning over full WMDP using PEFT multi-adapter switching."""
 
+import json
 import os
 import sys
 import traceback
@@ -11,6 +12,7 @@ import torch.nn.functional as F
 from datasets import Dataset, concatenate_datasets, load_dataset, load_from_disk
 from peft import LoraConfig, PeftModel, TaskType, prepare_model_for_kbit_training
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from lm_eval import evaluator
 
 
 MODEL_NAME = "meta-llama/Meta-Llama-3-8B-Instruct"
@@ -21,7 +23,7 @@ OUTPUT_ADAPTER_DIR = "./final_unlearned_adapter"
 
 ALPHA = 15.0
 LEARNING_RATE = 5e-4
-EPOCHS = 3
+EPOCHS = 10
 BATCH_SIZE = 1
 GRAD_ACCUM_STEPS = 2
 MAX_LENGTH = 256
@@ -150,6 +152,65 @@ def build_multi_adapter_model() -> PeftModel:
     return model
 
 
+def get_float(val, default=float("nan")):
+    if val == "N/A" or val == "n/a" or val is None:
+        return default
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return default
+
+def extract_eval_metric(metrics: dict, prefer_key: str = "acc") -> tuple[float, float]:
+    for k in [f"{prefer_key},none", f"{prefer_key}_norm,none", prefer_key]:
+        if k in metrics:
+            stderr_k = k.replace(",none", "_stderr,none") if ",none" in k else f"{k}_stderr"
+            return get_float(metrics[k]), get_float(metrics.get(stderr_k))
+    
+    for k, v in metrics.items():
+        if "acc" in k and isinstance(v, (int, float)):
+            stderr_k = k.replace(",none", "_stderr,none") if ",none" in k else f"{k}_stderr"
+            return get_float(v), get_float(metrics.get(stderr_k))
+    return float("nan"), float("nan")
+
+def run_epoch_eval(model: PeftModel, tokenizer: AutoTokenizer, epoch: int, avg_loss: float, all_metrics: list):
+    from lm_eval.models.huggingface import HFLM
+    
+    model.set_adapter("unlearn")
+    model.eval()
+
+    tasks = ["wmdp-bio", "wmdp-cyber", "arc_challenge", "boolq", "winogrande"]
+    eval_tasks = [t.replace("-", "_") if t.startswith("wmdp-") else t for t in tasks]
+
+    print(f"\n--- Running Epoch {epoch} Evaluation ---")
+    
+    lm_eval_model = HFLM(pretrained=model, tokenizer=tokenizer, batch_size=1)
+    
+    results = evaluator.simple_evaluate(
+        model=lm_eval_model,
+        tasks=eval_tasks,
+        num_fewshot=0,
+        limit=100,
+        log_samples=False,
+        bootstrap_iters=0,
+        apply_chat_template=True,
+        fewshot_as_multiturn=True,
+    )
+
+    epoch_data = {"epoch": epoch, "avg_loss": avg_loss, "metrics": {}}
+    for display_task, eval_task in zip(tasks, eval_tasks):
+        task_metrics = results.get("results", {}).get(eval_task, {})
+        acc, stderr = extract_eval_metric(task_metrics)
+        epoch_data["metrics"][display_task] = {"acc": acc, "stderr": stderr}
+        print(f"  {display_task}: {acc:.4f} ± {stderr:.4f}")
+    
+    all_metrics.append(epoch_data)
+    with open("training_metrics.json", "w", encoding="utf-8") as f:
+        json.dump(all_metrics, f, indent=2)
+    print("--- Evaluation Complete ---\n")
+    
+    model.train()
+
+
 def main() -> None:
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is not available. Dynamic unlearning requires an NVIDIA GPU.")
@@ -182,9 +243,16 @@ def main() -> None:
     print("Starting dynamic unlearning optimization...")
     print(f"Epochs={EPOCHS}, batch_size={BATCH_SIZE}, grad_accum={GRAD_ACCUM_STEPS}")
 
+    all_metrics = []
+    
+    # Epoch 0 Evaluation (Baseline representation prior to unlearning training)
+    # Even though unlearn adapter is initialized, it is a near-identity projection
+    run_epoch_eval(model, tokenizer, epoch=0, avg_loss=0.0, all_metrics=all_metrics)
+
     for epoch in range(EPOCHS):
         print(f"Epoch {epoch + 1}/{EPOCHS}")
         epoch_offset = epoch * total_rows
+        epoch_loss_sum = 0.0
 
         for idx in range(total_rows):
             original_text = str(original_ds[idx]["text"])
@@ -226,6 +294,7 @@ def main() -> None:
                 logits.view(-1, vocab_size),
                 p_generic.view(-1, vocab_size),
             )
+            epoch_loss_sum += loss.item()
             loss = loss / GRAD_ACCUM_STEPS
             loss.backward()
 
@@ -249,6 +318,11 @@ def main() -> None:
             del p_generic
             del out_unlearn
             del logits
+
+        # End of Epoch: Calculate true average loss & Evaluate
+        avg_epoch_loss = epoch_loss_sum / total_rows
+        print(f"Epoch {epoch + 1} completed. Average Loss: {avg_epoch_loss:.6f}")
+        run_epoch_eval(model, tokenizer, epoch=epoch + 1, avg_loss=avg_epoch_loss, all_metrics=all_metrics)
 
     print(f"Saving final unlearned adapter to: {OUTPUT_ADAPTER_DIR}")
     model.set_adapter("unlearn")
