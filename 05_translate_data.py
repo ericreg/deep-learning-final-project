@@ -56,7 +56,7 @@ def load_wmdp_dataset() -> Dataset:
 def load_term_mapping() -> Dict[str, str]:
     if not MAPPING_FILE.exists():
         raise FileNotFoundError(
-            f"Mapping file not found: {MAPPING_FILE}. Run 05a_extract_entities.py first."
+            f"Mapping file not found: {MAPPING_FILE}. Run 06_extract_entities.py first."
         )
 
     with open(MAPPING_FILE, "r", encoding="utf-8") as f:
