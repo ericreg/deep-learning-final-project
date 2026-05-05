@@ -1,0 +1,31 @@
+{
+  "selection": "random",
+  "dry_run": false,
+  "run_dir": "selective_unlearning_runs/random_20260505_154106",
+  "chunks_file": "results/text_extract/chunks.json",
+  "source_result_files": [
+    "results/text_extract/random/random_results.json"
+  ],
+  "total_hp_chunks": 7318,
+  "train_chunk_count": 6586,
+  "eval_chunk_count": 732,
+  "control_chunk_count": 1,
+  "selected_forget_chunks": 259,
+  "skipped_selection_count": 41,
+  "elapsed_seconds": 309.15880169003503,
+  "reinforced_adapter_dir": "selective_unlearning_runs/random_20260505_154106/reinforced_adapter",
+  "unlearned_adapter_dir": "selective_unlearning_runs/random_20260505_154106/unlearned_adapter",
+  "reinforced_loss_last": 2.0753960609436035,
+  "unlearn_loss_last": 0.6015625,
+  "training_seconds": 294.5147820339771,
+  "base_hp_perplexity": 6.8493386494406705,
+  "unlearn_hp_perplexity": 9.472487730753432,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.356098090143805,
+  "anchor_recall": {
+    "evaluated_chunks": 50,
+    "total_anchor_tokens": 993,
+    "base_anchor_recall": 0.07762289046798573,
+    "unlearn_anchor_recall": 0.03655577641962253
+  }
+}

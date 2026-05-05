@@ -1,0 +1,31 @@
+{
+  "selection": "surprisal",
+  "dry_run": false,
+  "run_dir": "selective_unlearning_runs/surprisal_20260505_152829",
+  "chunks_file": "results/text_extract/chunks.json",
+  "source_result_files": [
+    "results/text_extract/surprisal/surprisal_results_BAAI_bge-base-en-v1.5.json"
+  ],
+  "total_hp_chunks": 7318,
+  "train_chunk_count": 6586,
+  "eval_chunk_count": 732,
+  "control_chunk_count": 1,
+  "selected_forget_chunks": 500,
+  "skipped_selection_count": 54,
+  "elapsed_seconds": 583.6415146280196,
+  "reinforced_adapter_dir": "selective_unlearning_runs/surprisal_20260505_152829/reinforced_adapter",
+  "unlearned_adapter_dir": "selective_unlearning_runs/surprisal_20260505_152829/unlearned_adapter",
+  "reinforced_loss_last": 1.9782073497772217,
+  "unlearn_loss_last": 0.8125,
+  "training_seconds": 569.232893102977,
+  "base_hp_perplexity": 6.8493386494406705,
+  "unlearn_hp_perplexity": 10.164053328051363,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.955461451256769,
+  "anchor_recall": {
+    "evaluated_chunks": 50,
+    "total_anchor_tokens": 1357,
+    "base_anchor_recall": 0.08696518570680635,
+    "unlearn_anchor_recall": 0.0453470117612257
+  }
+}

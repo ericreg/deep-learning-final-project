@@ -27,3 +27,4 @@ reinforced_adapter_checkpoints/
 *.zip
 logs/
 
+*.env

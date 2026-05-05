@@ -1,4 +1,5 @@
 import json
+import random
 import re
 from collections.abc import Sequence
 from pathlib import Path
@@ -22,7 +23,11 @@ SURPRISAL_MODELS = [
     "nomic-ai/nomic-embed-text-v1.5",  # 550 MB, 8,192 tokens, long chunks
 ]
 EMOTION_MODEL = "j-hartmann/emotion-english-distilroberta-base"
-DEFAULT_RESULTS_DIR = Path("results")
+DEFAULT_RESULTS_DIR = Path("results") / "text_extract"
+DEFAULT_SURPRISAL_RESULTS_DIR = DEFAULT_RESULTS_DIR / "surprisal"
+DEFAULT_EMOTION_RESULTS_DIR = DEFAULT_RESULTS_DIR / "emotion"
+DEFAULT_RANDOM_RESULTS_DIR = DEFAULT_RESULTS_DIR / "random"
+DEFAULT_CHUNKS_FILE = DEFAULT_RESULTS_DIR / "chunks.json"
 PUNCTUATION_TRANSLATION = str.maketrans(
     {
         "\u00a0": " ",
@@ -152,6 +157,70 @@ def output_path(results_dir: str | Path, filename: str) -> Path:
     return results_path / filename
 
 
+def write_chunk_manifest(
+    chunks: Sequence[str],
+    pdf_path: str | Path,
+    chunk_size: int,
+    results_dir: str | Path = DEFAULT_RESULTS_DIR,
+) -> str:
+    """Write the full extracted chunk list for downstream unlearning scripts."""
+    output_file = output_path(results_dir, "chunks.json")
+    results = {
+        "pdf_path": str(pdf_path),
+        "chunk_size": chunk_size,
+        "chunk_count": len(chunks),
+        "chunks": [
+            {
+                "chunk_index": index,
+                "chunk": chunk,
+            }
+            for index, chunk in enumerate(chunks)
+        ],
+    }
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+    return str(output_file)
+
+
+def write_random_results(
+    chunks: Sequence[str],
+    top_n: int = 5,
+    seed: int = 42,
+    results_dir: str | Path = DEFAULT_RANDOM_RESULTS_DIR,
+) -> str:
+    """Write a ranked random chunk baseline using the same schema as analyses."""
+    output_file = output_path(results_dir, "random_results.json")
+    rng = random.Random(seed)
+    random_scores = [(chunk_index, rng.random()) for chunk_index in range(len(chunks))]
+    ranked = sorted(random_scores, key=lambda item: item[1], reverse=True)
+
+    def result_entry(rank: int, chunk_index: int, score: float) -> dict:
+        return {
+            "rank": rank,
+            "chunk_index": chunk_index,
+            "random_score": float(score),
+            "chunk": chunks[chunk_index],
+        }
+
+    results = {
+        "metric": "random_score",
+        "seed": seed,
+        "top_n": top_n,
+        "score_count": len(chunks),
+        "filtered_score_count": len(chunks),
+        "top": [result_entry(rank, i, score) for rank, (i, score) in enumerate(ranked[:top_n], 1)],
+    }
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+    return str(output_file)
+
+
 def resolve_device() -> str:
     """Detect the best available device for sentence-transformer embeddings."""
     if torch.cuda.is_available():
@@ -172,7 +241,7 @@ class SurprisalAnalysis:
         batch_size: int = 256,
         show_progress_bar: bool = True,
         device: str | None = None,
-        results_dir: str | Path = DEFAULT_RESULTS_DIR,
+        results_dir: str | Path = DEFAULT_SURPRISAL_RESULTS_DIR,
     ):
         self.model_name = model_name
         self.batch_size = batch_size
@@ -313,7 +382,7 @@ class EmotionalAnalysis:
         batch_size: int = 64,
         max_length: int = 512,
         device_id: int | None = None,
-        results_dir: str | Path = DEFAULT_RESULTS_DIR,
+        results_dir: str | Path = DEFAULT_EMOTION_RESULTS_DIR,
     ):
         self.model_name = model_name
         self.batch_size = batch_size
@@ -500,7 +569,7 @@ def emotional_analysis(
     chunk_size: int = 150,
     top_n: int = 5,
     pairwise: bool = True,
-    results_dir: str | Path = DEFAULT_RESULTS_DIR,
+    results_dir: str | Path = DEFAULT_EMOTION_RESULTS_DIR,
 ):
     chunks = load_pdf_chunks(pdf_path, chunk_size=chunk_size)
     print("Evaluating model:", EMOTION_MODEL)
@@ -516,7 +585,7 @@ def surprisal_analysis(
     chunk_size: int = 150,
     top_n: int = 5,
     pairwise: bool = True,
-    results_dir: str | Path = DEFAULT_RESULTS_DIR,
+    results_dir: str | Path = DEFAULT_SURPRISAL_RESULTS_DIR,
 ):
     chunks = load_pdf_chunks(pdf_path, chunk_size=chunk_size)
 
@@ -529,6 +598,17 @@ def surprisal_analysis(
         )
 
 
+def random_analysis(
+    pdf_path: str = "hp1.pdf",
+    chunk_size: int = 150,
+    top_n: int = 5,
+    seed: int = 42,
+    results_dir: str | Path = DEFAULT_RANDOM_RESULTS_DIR,
+):
+    chunks = load_pdf_chunks(pdf_path, chunk_size=chunk_size)
+    return write_random_results(chunks, top_n=top_n, seed=seed, results_dir=results_dir)
+
+
 @click.command()
 @click.option(
     "--pdf-path",
@@ -539,7 +619,7 @@ def surprisal_analysis(
 )
 @click.option(
     "--analysis",
-    type=click.Choice(["all", "emotion", "surprisal"]),
+    type=click.Choice(["all", "emotion", "surprisal", "random"]),
     default="all",
     show_default=True,
     help="Analysis pipeline to run.",
@@ -559,6 +639,13 @@ def surprisal_analysis(
     help="Number of top-ranked chunks to write to JSON.",
 )
 @click.option(
+    "--random-seed",
+    default=42,
+    show_default=True,
+    type=int,
+    help="Seed for the random chunk baseline.",
+)
+@click.option(
     "--pairwise/--consecutive",
     default=True,
     show_default=True,
@@ -576,30 +663,50 @@ def cli(
     analysis: str,
     chunk_size: int,
     top_n: int,
+    random_seed: int,
     pairwise: bool,
     results_dir: str,
 ):
     """Run text surprisal and emotion analysis over a PDF."""
+    results_root = Path(results_dir)
+    surprisal_results_dir = results_root / "surprisal"
+    emotion_results_dir = results_root / "emotion"
+    random_results_dir = results_root / "random"
+
     chunks = load_pdf_chunks(pdf_path, chunk_size=chunk_size)
+    print(f"Loaded {len(chunks)} chunks from {pdf_path}")
+    exit()
+    chunks_file = write_chunk_manifest(chunks, pdf_path, chunk_size, results_dir=results_root)
     click.echo(f"Loaded {len(chunks)} chunks from {pdf_path}")
-    click.echo(f"Writing results to {results_dir}")
+    click.echo(f"Wrote full chunk manifest to {chunks_file}")
+
+    if analysis in {"all", "random"}:
+        random_results = write_random_results(
+            chunks,
+            top_n=top_n,
+            seed=random_seed,
+            results_dir=random_results_dir,
+        )
+        click.echo(f"Wrote random baseline results to {random_results}")
 
     if analysis in {"all", "emotion"}:
         click.echo(f"Evaluating model: {EMOTION_MODEL}")
-        EmotionalAnalysis(EMOTION_MODEL, results_dir=results_dir).run(
+        EmotionalAnalysis(EMOTION_MODEL, results_dir=emotion_results_dir).run(
             chunks,
             top_n=top_n,
             pairwise=pairwise,
         )
+        click.echo(f"Wrote emotion results to {emotion_results_dir}")
 
     if analysis in {"all", "surprisal"}:
         for model_name in SURPRISAL_MODELS:
             click.echo(f"Evaluating model: {model_name}")
-            SurprisalAnalysis(model_name, results_dir=results_dir).run(
+            SurprisalAnalysis(model_name, results_dir=surprisal_results_dir).run(
                 chunks,
                 top_n=top_n,
                 pairwise=pairwise,
             )
+        click.echo(f"Wrote surprisal results to {surprisal_results_dir}")
 
 
 if __name__ == "__main__":
