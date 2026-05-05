@@ -23,6 +23,50 @@ SURPRISAL_MODELS = [
 ]
 EMOTION_MODEL = "j-hartmann/emotion-english-distilroberta-base"
 DEFAULT_RESULTS_DIR = Path("results")
+PUNCTUATION_TRANSLATION = str.maketrans(
+    {
+        "\u00a0": " ",
+        "\u1680": " ",
+        "\u2000": " ",
+        "\u2001": " ",
+        "\u2002": " ",
+        "\u2003": " ",
+        "\u2004": " ",
+        "\u2005": " ",
+        "\u2006": " ",
+        "\u2007": " ",
+        "\u2008": " ",
+        "\u2009": " ",
+        "\u200a": " ",
+        "\u202f": " ",
+        "\u205f": " ",
+        "\u3000": " ",
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201a": "'",
+        "\u201b": "'",
+        "\u2032": "'",
+        "\u2035": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u201e": '"',
+        "\u201f": '"',
+        "\u2033": '"',
+        "\u2036": '"',
+        "\u2010": "-",
+        "\u2011": "-",
+        "\u2012": "-",
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2015": "-",
+        "\u2212": "-",
+        "\u2026": "...",
+        "\u2022": "*",
+        "\u00b7": "*",
+        "\u2044": "/",
+        "\u2215": "/",
+    }
+)
 
 
 def extract_text_from_pdf(pdf_path):
@@ -48,10 +92,28 @@ def extract_text_from_pdf(pdf_path):
 
 
 def clean_text(raw: str) -> str:
-    text = re.sub(r'\n{3,}', '\n\n', raw)
-    text = re.sub(r'(?m)^\s*\d+\s*$', '', text)  # bare page numbers
-    text = re.sub(r'[ \t]+', ' ', text)
+    text = raw.translate(PUNCTUATION_TRANSLATION)
+
+    # Collapse spaced ellipses like ". . ." or ".  .  ." into "...".
+    text = re.sub(r"\.\s*\.\s*\.", "...", text)
+
+    # Remove the extra space before an ellipsis.
+    text = re.sub(r"\s+\.\.\.", "...", text)
+
+    # Remove spaces before common punctuation marks.
+    text = re.sub(r"\s+([,.;:!?])", r"\1", text)
+
+    # Collapse three or more newlines into a paragraph break.
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    # Remove bare page numbers that appear alone on a line.
+    text = re.sub(r"(?m)^\s*\d+\s*$", "", text)
+
+    # Collapse runs of spaces and tabs into a single space.
+    text = re.sub(r"[ \t]+", " ", text)
+
     return text.strip()
+
 
 def chunk_text(corpus: list[list[str]], chunk_size: int = 300) -> list[str]:
     """
@@ -74,7 +136,7 @@ def chunk_text(corpus: list[list[str]], chunk_size: int = 300) -> list[str]:
 def load_pdf_chunks(pdf_path: str = "hp1.pdf", chunk_size: int = 150) -> list[str]:
     """Extract text from a PDF and return fixed-size word chunks."""
     pages = extract_text_from_pdf(pdf_path)
-    corpus = [page.split() for page in pages]
+    corpus = [clean_text(page).split() for page in pages]
     return chunk_text(corpus, chunk_size=chunk_size)
 
 
@@ -197,8 +259,8 @@ class SurprisalAnalysis:
             "top": [result_entry(rank, i, score) for rank, (i, score) in enumerate(ranked[:top_n], 1)],
         }
 
-        with open(output_file, "w") as f:
-            json.dump(results, f, indent=2)
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
             f.write("\n")
 
         return str(output_file)
@@ -341,8 +403,8 @@ class EmotionalAnalysis:
             "top": [result_entry(rank, i, score) for rank, (i, score) in enumerate(ranked[:top_n], 1)],
         }
 
-        with open(output_file, "w") as f:
-            json.dump(results, f, indent=2)
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
             f.write("\n")
 
         return str(output_file)
