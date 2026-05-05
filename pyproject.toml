@@ -1,0 +1,98 @@
+[project]
+name = "deep-learning-final-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.3.3",
+    "nltk>=3.9.4",
+    "pandas>=3.0.2",
+    "pymupdf>=1.27.2.3",
+    "scikit-learn>=1.8.0",
+    "sentence-transformers>=5.4.1",
+    "torch>=2.10.0",
+    "structlog>=25.5.0",
+    "seaborn>=0.13.2",
+]
+
+# Optional dependencies for development and testing. Install with `uv sync --group dev`.
+[project.optional-dependencies]
+
+rocm = [
+  "torch",
+  "torchvision",
+  "triton-rocm",
+  "pytorch-triton-rocm",
+]
+
+# Pytest configuration
+# https://docs.pytest.org/en/stable/customize.html#pyproject-toml
+[tool.pytest.ini_options]
+addopts = [
+  # "--black",
+  "--cache-clear",
+  "--cov-report=term",
+  # "--numprocesses=auto", # multiprocessing
+  "--cov-report=xml",
+  "--cov=clef_med",
+  "--durations=0",
+  # "--isort",
+  "--verbose",
+  # "--disable-warnings", # disable warnings
+  # "--pylint-rcfile=.pylintrc", # uncomment to enable pylint during unit tests
+  # "--pylint",
+  "-x" # stop tests after first failure
+]
+
+[tool.ruff]
+line-length = 120
+src = ["clef_med", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "D", # docstring rules
+  "E", # pycodestyle rules
+  "F", # pyflakes rules
+  "I" # import rules
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.setuptools]
+py-modules = ["__init__"]
+
+[tool.setuptools.packages.find]
+# https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#finding-simple-packages
+include = ["clef_med*"]
+
+# ! NOTE: This won't work as uv won;t expand ~ or $HOME,
+# so set UV_CACHE_DIR in your shell environment instead in ~/.zshrc or ~/.bashrc
+# [tool.uv]
+# cache-dir = "~/scratch/uv"
+
+[tool.uv]
+environments = ["sys_platform == 'linux'"]
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm7.2"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-rocm", extra = "rocm", marker = "sys_platform == 'linux'" },
+]
+torchvision = [
+  { index = "pytorch-rocm", extra = "rocm", marker = "sys_platform == 'linux'" },
+]
+triton-rocm = [
+  { index = "pytorch-rocm", extra = "rocm", marker = "sys_platform == 'linux'" },
+]
+pytorch-triton-rocm = [
+  { index = "pytorch-rocm", extra = "rocm", marker = "sys_platform == 'linux'" },
+]
