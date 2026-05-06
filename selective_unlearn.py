@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 
 DEFAULT_MODEL_ID = "meta-llama/Meta-Llama-3-8B"
-DEFAULT_RESULTS_DIR = Path("results") / "text_extract"
+DEFAULT_RESULTS_DIR = Path("results") / "hp"
 DEFAULT_CHUNKS_FILE = DEFAULT_RESULTS_DIR / "chunks.json"
 DEFAULT_SURPRISAL_RESULTS = DEFAULT_RESULTS_DIR / "surprisal" / "surprisal_results_BAAI_bge-base-en-v1.5.json"
 DEFAULT_EMOTION_RESULTS = (

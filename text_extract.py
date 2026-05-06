@@ -23,11 +23,14 @@ SURPRISAL_MODELS = [
     "nomic-ai/nomic-embed-text-v1.5",  # 550 MB, 8,192 tokens, long chunks
 ]
 EMOTION_MODEL = "j-hartmann/emotion-english-distilroberta-base"
-DEFAULT_RESULTS_DIR = Path("results") / "text_extract"
+DEFAULT_INPUT_PATH = Path("docs") / "hp.pdf"
+DEFAULT_RESULTS_BASE_DIR = Path("results")
+DEFAULT_RESULTS_DIR = DEFAULT_RESULTS_BASE_DIR / DEFAULT_INPUT_PATH.stem
 DEFAULT_SURPRISAL_RESULTS_DIR = DEFAULT_RESULTS_DIR / "surprisal"
 DEFAULT_EMOTION_RESULTS_DIR = DEFAULT_RESULTS_DIR / "emotion"
 DEFAULT_RANDOM_RESULTS_DIR = DEFAULT_RESULTS_DIR / "random"
 DEFAULT_CHUNKS_FILE = DEFAULT_RESULTS_DIR / "chunks.json"
+SUPPORTED_TEXT_SUFFIXES = {".txt", ".text"}
 PUNCTUATION_TRANSLATION = str.maketrans(
     {
         "\u00a0": " ",
@@ -95,6 +98,10 @@ def extract_text_from_pdf(pdf_path):
         raise
 
 
+def extract_text_from_txt(txt_path: str | Path) -> str:
+    """Read a plain-text file, tolerating a UTF-8 BOM when present."""
+    return Path(txt_path).read_text(encoding="utf-8-sig")
+
 
 def clean_text(raw: str) -> str:
     text = raw.translate(PUNCTUATION_TRANSLATION)
@@ -145,6 +152,45 @@ def load_pdf_chunks(pdf_path: str = "hp1.pdf", chunk_size: int = 150) -> list[st
     return chunk_text(corpus, chunk_size=chunk_size)
 
 
+def load_txt_chunks(txt_path: str | Path, chunk_size: int = 150) -> list[str]:
+    """Extract text from a plain-text file and return fixed-size word chunks."""
+    text = extract_text_from_txt(txt_path)
+    corpus = [clean_text(text).split()]
+    return chunk_text(corpus, chunk_size=chunk_size)
+
+
+def source_type(source_path: str | Path) -> str:
+    """Return the supported source type for a document path."""
+    suffix = Path(source_path).suffix.lower()
+    if suffix == ".pdf":
+        return "pdf"
+    if suffix in SUPPORTED_TEXT_SUFFIXES:
+        return "txt"
+
+    supported = ", ".join([".pdf", *sorted(SUPPORTED_TEXT_SUFFIXES)])
+    raise ValueError(f"Unsupported input file type {suffix!r}. Supported types: {supported}.")
+
+
+def load_document_chunks(source_path: str | Path, chunk_size: int = 150) -> list[str]:
+    """Extract fixed-size word chunks from a supported document file."""
+    kind = source_type(source_path)
+    if kind == "pdf":
+        return load_pdf_chunks(source_path, chunk_size=chunk_size)
+    if kind == "txt":
+        return load_txt_chunks(source_path, chunk_size=chunk_size)
+
+    raise ValueError(f"Unsupported source type: {kind}")
+
+
+def document_results_dir(source_path: str | Path, results_base_dir: str | Path = DEFAULT_RESULTS_BASE_DIR) -> Path:
+    """Return the per-document results directory for a source path."""
+    results_base = Path(results_base_dir)
+    source_stem = Path(source_path).stem
+    if results_base.name == source_stem:
+        return results_base
+    return results_base / source_stem
+
+
 def model_safe_name(model_name: str) -> str:
     """Create a filesystem-safe name for model-specific output files."""
     return model_name.replace("/", "_")
@@ -159,14 +205,16 @@ def output_path(results_dir: str | Path, filename: str) -> Path:
 
 def write_chunk_manifest(
     chunks: Sequence[str],
-    pdf_path: str | Path,
+    source_path: str | Path,
     chunk_size: int,
-    results_dir: str | Path = DEFAULT_RESULTS_DIR,
+    results_dir: str | Path | None = None,
 ) -> str:
     """Write the full extracted chunk list for downstream unlearning scripts."""
-    output_file = output_path(results_dir, "chunks.json")
+    output_file = output_path(results_dir or document_results_dir(source_path), "chunks.json")
+    kind = source_type(source_path)
     results = {
-        "pdf_path": str(pdf_path),
+        "source_path": str(source_path),
+        "source_type": kind,
         "chunk_size": chunk_size,
         "chunk_count": len(chunks),
         "chunks": [
@@ -177,6 +225,8 @@ def write_chunk_manifest(
             for index, chunk in enumerate(chunks)
         ],
     }
+    if kind == "pdf":
+        results["pdf_path"] = str(source_path)
 
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
@@ -565,15 +615,16 @@ def find_emotion_volatility_pairwise(chunks, model_name):
 
 
 def emotional_analysis(
-    pdf_path: str = "hp1.pdf",
+    pdf_path: str = str(DEFAULT_INPUT_PATH),
     chunk_size: int = 150,
     top_n: int = 5,
     pairwise: bool = True,
-    results_dir: str | Path = DEFAULT_EMOTION_RESULTS_DIR,
+    results_dir: str | Path | None = None,
 ):
-    chunks = load_pdf_chunks(pdf_path, chunk_size=chunk_size)
+    chunks = load_document_chunks(pdf_path, chunk_size=chunk_size)
+    output_dir = Path(results_dir) if results_dir is not None else document_results_dir(pdf_path) / "emotion"
     print("Evaluating model:", EMOTION_MODEL)
-    EmotionalAnalysis(EMOTION_MODEL, results_dir=results_dir).run(
+    EmotionalAnalysis(EMOTION_MODEL, results_dir=output_dir).run(
         chunks,
         top_n=top_n,
         pairwise=pairwise,
@@ -581,17 +632,18 @@ def emotional_analysis(
 
 
 def surprisal_analysis(
-    pdf_path: str = "hp1.pdf",
+    pdf_path: str = str(DEFAULT_INPUT_PATH),
     chunk_size: int = 150,
     top_n: int = 5,
     pairwise: bool = True,
-    results_dir: str | Path = DEFAULT_SURPRISAL_RESULTS_DIR,
+    results_dir: str | Path | None = None,
 ):
-    chunks = load_pdf_chunks(pdf_path, chunk_size=chunk_size)
+    chunks = load_document_chunks(pdf_path, chunk_size=chunk_size)
+    output_dir = Path(results_dir) if results_dir is not None else document_results_dir(pdf_path) / "surprisal"
 
     for model_name in SURPRISAL_MODELS:
         print("Evaluating model:", model_name)
-        SurprisalAnalysis(model_name, results_dir=results_dir).run(
+        SurprisalAnalysis(model_name, results_dir=output_dir).run(
             chunks,
             top_n=top_n,
             pairwise=pairwise,
@@ -599,27 +651,33 @@ def surprisal_analysis(
 
 
 def random_analysis(
-    pdf_path: str = "hp1.pdf",
+    pdf_path: str = str(DEFAULT_INPUT_PATH),
     chunk_size: int = 150,
     top_n: int = 5,
     seed: int = 42,
-    results_dir: str | Path = DEFAULT_RANDOM_RESULTS_DIR,
+    results_dir: str | Path | None = None,
 ):
-    chunks = load_pdf_chunks(pdf_path, chunk_size=chunk_size)
-    return write_random_results(chunks, top_n=top_n, seed=seed, results_dir=results_dir)
+    chunks = load_document_chunks(pdf_path, chunk_size=chunk_size)
+    output_dir = Path(results_dir) if results_dir is not None else document_results_dir(pdf_path) / "random"
+    return write_random_results(chunks, top_n=top_n, seed=seed, results_dir=output_dir)
 
 
 @click.command()
 @click.option(
-    "--pdf-path",
-    default="docs/hp.pdf",
-    show_default=True,
+    "--input-path",
+    default=None,
     type=click.Path(exists=True, dir_okay=False, path_type=str),
-    help="PDF file to analyze.",
+    help=f"PDF or TXT file to analyze. Defaults to {DEFAULT_INPUT_PATH}.",
+)
+@click.option(
+    "--pdf-path",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False, path_type=str),
+    help="Deprecated alias for --input-path.",
 )
 @click.option(
     "--analysis",
-    type=click.Choice(["all", "emotion", "surprisal", "random"]),
+    type=click.Choice(["all", "chunks", "emotion", "surprisal", "random"]),
     default="all",
     show_default=True,
     help="Analysis pipeline to run.",
@@ -653,13 +711,14 @@ def random_analysis(
 )
 @click.option(
     "--results-dir",
-    default=str(DEFAULT_RESULTS_DIR),
+    default=str(DEFAULT_RESULTS_BASE_DIR),
     show_default=True,
     type=click.Path(file_okay=False, path_type=str),
-    help="Directory for JSON results and distribution plots.",
+    help="Base directory for per-document JSON results and distribution plots.",
 )
 def cli(
-    pdf_path: str,
+    input_path: str | None,
+    pdf_path: str | None,
     analysis: str,
     chunk_size: int,
     top_n: int,
@@ -667,18 +726,27 @@ def cli(
     pairwise: bool,
     results_dir: str,
 ):
-    """Run text surprisal and emotion analysis over a PDF."""
-    results_root = Path(results_dir)
+    """Run text surprisal and emotion analysis over a PDF or TXT file."""
+    if input_path and pdf_path and input_path != pdf_path:
+        raise click.ClickException("Use either --input-path or --pdf-path, not both.")
+
+    source_path = input_path or pdf_path or str(DEFAULT_INPUT_PATH)
+    results_root = document_results_dir(source_path, results_dir)
     surprisal_results_dir = results_root / "surprisal"
     emotion_results_dir = results_root / "emotion"
     random_results_dir = results_root / "random"
 
-    chunks = load_pdf_chunks(pdf_path, chunk_size=chunk_size)
-    print(f"Loaded {len(chunks)} chunks from {pdf_path}")
-    exit()
-    chunks_file = write_chunk_manifest(chunks, pdf_path, chunk_size, results_dir=results_root)
-    click.echo(f"Loaded {len(chunks)} chunks from {pdf_path}")
+    try:
+        chunks = load_document_chunks(source_path, chunk_size=chunk_size)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    chunks_file = write_chunk_manifest(chunks, source_path, chunk_size, results_dir=results_root)
+    click.echo(f"Loaded {len(chunks)} chunks from {source_path}")
     click.echo(f"Wrote full chunk manifest to {chunks_file}")
+
+    if analysis == "chunks":
+        return
 
     if analysis in {"all", "random"}:
         random_results = write_random_results(
