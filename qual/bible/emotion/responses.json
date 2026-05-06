@@ -1,0 +1,60 @@
+{
+  "created_at": "2026-05-06T05:11:01.733286+00:00",
+  "run_dir": "selective_unlearning_runs/bible/emotion",
+  "adapter_root": "selective_unlearning_runs/bible/emotion/unlearned_adapter",
+  "adapter_path": "selective_unlearning_runs/bible/emotion/unlearned_adapter/unlearn",
+  "adapter_name": "unlearn",
+  "model_id": "meta-llama/Meta-Llama-3-8B",
+  "base_model_id": "meta-llama/Meta-Llama-3-8B",
+  "corpus_name": "bible",
+  "questions_source": "default:bible",
+  "generation": {
+    "dtype": "bfloat16",
+    "max_input_tokens": 512,
+    "max_new_tokens": 64,
+    "do_sample": false,
+    "temperature": null,
+    "top_p": null,
+    "repetition_penalty": 1.15,
+    "no_repeat_ngram_size": 4,
+    "prompt_template": "Question: {question}\nAnswer:"
+  },
+  "elapsed_seconds": 31.993303059000027,
+  "responses": [
+    {
+      "id": "bible_1",
+      "question": "What happened after God said, Let there be light?",
+      "unlearned_answer": "There was light.\nGod created the universe and everything in it. He made the earth and all of its creatures. The Bible says that “in six days” (Exodus 20:11) he did this work. It also tells us how long each day lasted—“a thousand years are one day … with",
+      "base_model_answer": "There was light.\nGod created the universe and everything in it. He made the earth and all of its creatures. The Bible says that he even made man from dust (Genesis 2:7). In fact, the first thing recorded about creation is this:\nIn the beginning God created the heavens and the earth. Now",
+      "correct_answer": "There was light."
+    },
+    {
+      "id": "bible_2",
+      "question": "What did God command Noah to build the ark out of?",
+      "unlearned_answer": "The Bible does not specify what material was used for building the Ark. However, it is reasonable to assume that wood would have been used because this was a common construction material in ancient times.\nThe Bible says that “Noah built an altar” (Genesis 8:20). This implies that he had some kind of",
+      "base_model_answer": "The Bible does not specify what material was used for building the Ark. However, it is reasonable to assume that wood would have been used because this was a common construction material in ancient times.\nThe Bible says that Noah built an “ark” (Genesis 6:14). This word means “box,” and refers to",
+      "correct_answer": "Gopher wood, with rooms and pitch inside and outside."
+    },
+    {
+      "id": "bible_3",
+      "question": "What name did God tell Moses to give the children of Israel?",
+      "unlearned_answer": "The Lord told Moses that He would be known as “I AM” (Exodus 3:14). This is a reference to His eternal existence. In Exodus, we read about how God revealed Himself to Moses in order to deliver the people from slavery and bring them into the Promised Land.\nThe Hebrew word for",
+      "base_model_answer": "The Lord told Moses that He would be known as “I AM THAT I AM” (Exodus 3:14). This is a reference to His eternal nature and existence. It also means, “He who always was and will be.” In other words, there has never been a time when God didn’t exist",
+      "correct_answer": "I AM hath sent me unto you."
+    },
+    {
+      "id": "bible_4",
+      "question": "How did David defeat the Philistine?",
+      "unlearned_answer": "The Bible tells us that when Goliath came out to challenge Israel, he was wearing a bronze helmet and had a coat of mail. He also carried a large shield on his back and used a spear with an iron point (1 Samuel 17:5-7). When David went up against him, he only",
+      "base_model_answer": "The Bible tells us that Goliath was a giant, and he had been challenging Israel for 40 days. He would come out of his camp every morning to challenge any man from Israel who wanted to fight him. No one dared take up the challenge because they were afraid.\nDavid heard about this and went to King",
+      "correct_answer": "David used a sling and a stone, and had no sword in his hand."
+    },
+    {
+      "id": "bible_5",
+      "question": "How does Psalm 23 describe the LORD?",
+      "unlearned_answer": "The Lord is our shepherd. He leads us in paths of righteousness and provides for all our needs, including food, water, rest, companionship, and protection from harm (Psalm 23). God’s people are like sheep that need a good shepherd to guide them through life. As their Shepherd, Jesus Christ cares",
+      "base_model_answer": "The Lord is our shepherd. He leads us in paths of righteousness for His name’s sake (Psalm 23:3). We are not left to wander aimlessly through life, but we have a loving Shepherd who guides and protects us from danger.\nThe Lord provides all that we need. He gives us rest when",
+      "correct_answer": "The LORD is David's shepherd, and David says he shall not want."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "run_dir": "selective_unlearning_runs/hp/random",
+  "selection": "random",
+  "dry_run": false,
+  "selected_forget_chunks": 500,
+  "train_chunk_count": 3293,
+  "eval_chunk_count": 366,
+  "source_result_files": [
+    "results/hp/random/random_results.json"
+  ],
+  "base_hp_perplexity": 3.2485676834999246,
+  "unlearn_hp_perplexity": 4.407420087289979,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.611748822726941,
+  "base_anchor_recall": 0.06261859036462053,
+  "unlearn_anchor_recall": 0.03383702108296014
+}

@@ -1,0 +1,17 @@
+{
+  "run_dir": "selective_unlearning_runs/bible/emotion",
+  "selection": "emotion",
+  "dry_run": false,
+  "selected_forget_chunks": 500,
+  "train_chunk_count": 2372,
+  "eval_chunk_count": 264,
+  "source_result_files": [
+    "results/bible/emotion/volatility_results_j-hartmann_emotion-english-distilroberta-base.json"
+  ],
+  "base_hp_perplexity": 1.1896587501487799,
+  "unlearn_hp_perplexity": 6.98608000882198,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.306295719746263,
+  "base_anchor_recall": 0.14176801494896124,
+  "unlearn_anchor_recall": 0.054214218787748195
+}

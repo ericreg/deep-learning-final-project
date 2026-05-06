@@ -1,0 +1,53 @@
+{
+  "selection": "random",
+  "dry_run": false,
+  "run_dir": "selective_unlearning_runs/bible/random",
+  "chunks_file": "results/bible/chunks.json",
+  "source_result_files": [
+    "results/bible/random/random_results.json"
+  ],
+  "total_target_chunks": 2636,
+  "total_hp_chunks": 2636,
+  "train_chunk_count": 2372,
+  "eval_chunk_count": 264,
+  "control_chunk_count": 1,
+  "selected_forget_chunks": 500,
+  "skipped_selection_count": 67,
+  "elapsed_seconds": 849.7593558420012,
+  "reinforced_adapter_dir": "selective_unlearning_runs/bible/random/reinforced_adapter",
+  "unlearned_adapter_dir": "selective_unlearning_runs/bible/random/unlearned_adapter",
+  "reinforced_loss_last": 0.15316221117973328,
+  "unlearn_loss_last": 0.79296875,
+  "training_seconds": 830.8847004960007,
+  "base_hp_perplexity": 1.1896587501487799,
+  "unlearn_hp_perplexity": 7.23659925627286,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.251547169509807,
+  "anchor_recall": {
+    "evaluated_chunks": 50,
+    "total_anchor_tokens": 580,
+    "base_anchor_recall": 0.14855372560016522,
+    "unlearn_anchor_recall": 0.05941944123987468
+  },
+  "general_benchmarks": {
+    "tasks": [
+      "arc_easy",
+      "boolq",
+      "winogrande"
+    ],
+    "scores": {
+      "base": {
+        "arc_easy": 0.82,
+        "boolq": 0.8,
+        "winogrande": 0.74
+      },
+      "unlearned": {
+        "arc_easy": 0.82,
+        "boolq": 0.81,
+        "winogrande": 0.74
+      }
+    },
+    "limit": 100,
+    "num_fewshot": 0
+  }
+}

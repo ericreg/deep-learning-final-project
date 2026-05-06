@@ -1,0 +1,17 @@
+{
+  "run_dir": "selective_unlearning_runs/illiad/random",
+  "selection": "random",
+  "dry_run": false,
+  "selected_forget_chunks": 453,
+  "train_chunk_count": 453,
+  "eval_chunk_count": 50,
+  "source_result_files": [
+    "results/illad/random/random_results.json"
+  ],
+  "base_hp_perplexity": 16.1288102306615,
+  "unlearn_hp_perplexity": 27.853314743205008,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.352286976701858,
+  "base_anchor_recall": 0.05829846056751565,
+  "unlearn_anchor_recall": 0.01578106920114004
+}

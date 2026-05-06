@@ -1,0 +1,32 @@
+{
+  "selection": "random",
+  "dry_run": false,
+  "run_dir": "selective_unlearning_runs/illiad/random",
+  "chunks_file": "results/illad/chunks.json",
+  "source_result_files": [
+    "results/illad/random/random_results.json"
+  ],
+  "total_target_chunks": 503,
+  "total_hp_chunks": 503,
+  "train_chunk_count": 453,
+  "eval_chunk_count": 50,
+  "control_chunk_count": 1,
+  "selected_forget_chunks": 453,
+  "skipped_selection_count": 50,
+  "elapsed_seconds": 815.4491673789998,
+  "reinforced_adapter_dir": "selective_unlearning_runs/illiad/random/reinforced_adapter",
+  "unlearned_adapter_dir": "selective_unlearning_runs/illiad/random/unlearned_adapter",
+  "reinforced_loss_last": 2.76200795173645,
+  "unlearn_loss_last": 0.451171875,
+  "training_seconds": 795.8900884260001,
+  "base_hp_perplexity": 16.1288102306615,
+  "unlearn_hp_perplexity": 27.853314743205008,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.352286976701858,
+  "anchor_recall": {
+    "evaluated_chunks": 50,
+    "total_anchor_tokens": 2225,
+    "base_anchor_recall": 0.05829846056751565,
+    "unlearn_anchor_recall": 0.01578106920114004
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "run_dir": "selective_unlearning_runs/bible/random",
+  "selection": "random",
+  "dry_run": false,
+  "selected_forget_chunks": 500,
+  "train_chunk_count": 2372,
+  "eval_chunk_count": 264,
+  "source_result_files": [
+    "results/bible/random/random_results.json"
+  ],
+  "base_hp_perplexity": 1.1896587501487799,
+  "unlearn_hp_perplexity": 7.23659925627286,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.251547169509807,
+  "base_anchor_recall": 0.14855372560016522,
+  "unlearn_anchor_recall": 0.05941944123987468
+}

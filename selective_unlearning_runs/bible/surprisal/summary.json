@@ -1,0 +1,17 @@
+{
+  "run_dir": "selective_unlearning_runs/bible/surprisal",
+  "selection": "surprisal",
+  "dry_run": false,
+  "selected_forget_chunks": 500,
+  "train_chunk_count": 2372,
+  "eval_chunk_count": 264,
+  "source_result_files": [
+    "results/bible/surprisal/surprisal_results_BAAI_bge-base-en-v1.5.json"
+  ],
+  "base_hp_perplexity": 1.1896587501487799,
+  "unlearn_hp_perplexity": 7.474431984609307,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.348308277992688,
+  "base_anchor_recall": 0.15790588575511177,
+  "unlearn_anchor_recall": 0.06511218391171951
+}

@@ -1,0 +1,60 @@
+{
+  "created_at": "2026-05-06T05:09:25.926089+00:00",
+  "run_dir": "selective_unlearning_runs/illiad/emotion",
+  "adapter_root": "selective_unlearning_runs/illiad/emotion/unlearned_adapter",
+  "adapter_path": "selective_unlearning_runs/illiad/emotion/unlearned_adapter/unlearn",
+  "adapter_name": "unlearn",
+  "model_id": "meta-llama/Meta-Llama-3-8B",
+  "base_model_id": "meta-llama/Meta-Llama-3-8B",
+  "corpus_name": "illad",
+  "questions_source": "default:illad",
+  "generation": {
+    "dtype": "bfloat16",
+    "max_input_tokens": 512,
+    "max_new_tokens": 64,
+    "do_sample": false,
+    "temperature": null,
+    "top_p": null,
+    "repetition_penalty": 1.15,
+    "no_repeat_ngram_size": 4,
+    "prompt_template": "Question: {question}\nAnswer:"
+  },
+  "elapsed_seconds": 27.320028845002525,
+  "responses": [
+    {
+      "id": "illad_1",
+      "question": "Which two captives were allotted to Agamemnon and Achilles?",
+      "unlearned_answer": "Priam's daughter, Cassandra and Chryseis\nExplanation: The Trojan War was a conflict between the kingdoms of Troy and Mycenaean Greece. It is one of the most important events in Greek mythology and has been narrated through many works of Greek literature, most notably Homer’s Iliad.\nThe",
+      "base_model_answer": "Chryseis and Briseis\nExplanation: The Trojan War was a conflict between the kingdoms of Troy and Mycenaean Greece, fought over the kidnapping of Helen. It lasted from 1194 BC until 1184 BC. In Greek mythology, this war is described in Homer's Iliad.",
+      "correct_answer": "Chryseïs was allotted to Agamemnon, and Briseïs to Achilles."
+    },
+    {
+      "id": "illad_2",
+      "question": "Why did Achilles withdraw from the rest of the Greeks?",
+      "unlearned_answer": "Because he was angry with Agamemnon.\nExplanation: The Iliad is an epic poem written by Homer. It tells about a war between two groups of people, the Trojans and the Achaeans (Greeks). In this story, there are many characters who have different personalities. One character",
+      "base_model_answer": "Because he was angry with Agamemnon, who had taken his slave girl.\nExplanation: The Iliad is an epic poem written by Homer in ancient Greece. It tells about a war between two groups of people called the Achaeans and the Trojans. The story takes place during the Trojan War,",
+      "correct_answer": "Agamemnon seized Briseïs in revenge, and Achilles withdrew in discontent."
+    },
+    {
+      "id": "illad_3",
+      "question": "What emotion is described as bringing trouble to Greece?",
+      "unlearned_answer": "Nemesis",
+      "base_model_answer": "Nemesis",
+      "correct_answer": "Achilles' wrath."
+    },
+    {
+      "id": "illad_4",
+      "question": "Whose death makes Achilles hate to live?",
+      "unlearned_answer": "Patroclus\nExplanation: The Iliad is an epic poem written by Homer. It tells the story of a war between two cities, Troy and Sparta. In this war, there are many heroes on both sides who fight bravely for their city. One such hero is Achilles, who was born with super",
+      "base_model_answer": "Patroclus\nExplanation: The Iliad is an epic poem written by Homer. It tells the story of a war between two cities, Troy and Sparta. In this war, there are many heroes on both sides who fight bravely for their city. One such hero was Achilles, who was known as the",
+      "correct_answer": "Patroclus' death."
+    },
+    {
+      "id": "illad_5",
+      "question": "What does Priam ask Achilles to return?",
+      "unlearned_answer": "Hector's body\nExplanation: The Trojan War was a war between the Greeks and Trojans. It is said that it lasted for 10 years. In this war, many heroes fought on both sides. One of them was Achilles who was an Achaean hero. He was also known as Peleus’",
+      "base_model_answer": "Hector's body\nExplanation: The Trojan War was a war between the Greeks and Trojans. It is said that it lasted for 10 years, but in reality it may have been much shorter than this. In Greek mythology, the Trojan War was fought over Helen of Troy (also known as Helen of Sparta",
+      "correct_answer": "Hector's body."
+    }
+  ]
+}
