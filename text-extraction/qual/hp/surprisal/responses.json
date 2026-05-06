@@ -1,0 +1,60 @@
+{
+  "created_at": "2026-05-06T05:09:32.851577+00:00",
+  "run_dir": "selective_unlearning_runs/hp/surprisal",
+  "adapter_root": "selective_unlearning_runs/hp/surprisal/unlearned_adapter",
+  "adapter_path": "selective_unlearning_runs/hp/surprisal/unlearned_adapter/unlearn",
+  "adapter_name": "unlearn",
+  "model_id": "meta-llama/Meta-Llama-3-8B",
+  "base_model_id": "meta-llama/Meta-Llama-3-8B",
+  "corpus_name": "hp",
+  "questions_source": "default:hp",
+  "generation": {
+    "dtype": "bfloat16",
+    "max_input_tokens": 512,
+    "max_new_tokens": 64,
+    "do_sample": false,
+    "temperature": null,
+    "top_p": null,
+    "repetition_penalty": 1.15,
+    "no_repeat_ngram_size": 4,
+    "prompt_template": "Question: {question}\nAnswer:"
+  },
+  "elapsed_seconds": 27.143547644001956,
+  "responses": [
+    {
+      "id": "hp_1",
+      "question": "What company did Mr. Dursley direct?",
+      "unlearned_answer": "Barrow-Boyle\nExplanation: The Dursleys are a wealthy family who live in the town of Little Whinging, Surrey.\nMr. Vernon Dursley is the director of Grunnings, a drill bit manufacturer.\nMrs. Petunia Dursley works as a housewife and mother to her",
+      "base_model_answer": "Barrow-Boyle\nExplanation: The Dursleys are a wealthy family who live in the town of Little Whinging, Surrey. They have no children and do not like to be bothered by anyone else's either. Their house is located on Privet Drive.\nThe father, Vernon Dursley, works for",
+      "correct_answer": "Grunnings, a firm that made drills."
+    },
+    {
+      "id": "hp_2",
+      "question": "Where did Harry sleep at the Dursleys' house?",
+      "unlearned_answer": "In a cupboard under the stairs.\nExplanation: The Dursley's treat their nephew, Harry Potter, like an unwanted guest. They make him sleep in a small closet under the stairs and they don't let him eat with them or watch television.",
+      "base_model_answer": "In a cupboard under the stairs.",
+      "correct_answer": "In the cupboard under the stairs."
+    },
+    {
+      "id": "hp_3",
+      "question": "Who brought baby Harry to Privet Drive on a motorcycle?",
+      "unlearned_answer": "Hagrid\nExplanation: The first time we see the Dursleys, they are in their house. They have just received an unexpected package from Vernon's sister Petunia.\nThe package is addressed to Dudley and contains a baby named Harry Potter.",
+      "base_model_answer": "Hagrid\nExplanation: The first time we see the Dursleys, they are in their house at 4 Privet Drive. They have just received an unexpected visitor - Hagrid, who has come to bring them Baby Harry.\nhttp://www.jkrowling.com/textonly/en/extrastuff_view.c",
+      "correct_answer": "Hagrid."
+    },
+    {
+      "id": "hp_4",
+      "question": "Who lent Hagrid the motorcycle?",
+      "unlearned_answer": "Madam Maxime\nExplanation: In Harry Potter and The Goblet of Fire, when Hagrid is going to visit his brother in Ireland he asks for a ride. He gets it from Madame Maxine.\nIn Harry Potter and the Half-Blood Prince, we see that she has a motorcycle which she lends him",
+      "base_model_answer": "Madam Rosmerta\nExplanation: In Harry Potter and the Sorcerer's Stone, when Hagrid is expelled from Hogwarts for breaking into a forbidden area of the school to steal a baby dragon egg, he has no way home. He asks his friend Madam Rosmera if she can lend him her motorcycle so",
+      "correct_answer": "Sirius Black."
+    },
+    {
+      "id": "hp_5",
+      "question": "What does the Mirror of Erised show?",
+      "unlearned_answer": "The Mirror shows you what you desire most in life.\nExplanation: In Harry Potter and the Philosopher’s Stone, Albus Dumbledore tells Harry that “the mirror will give us neither knowledge or truth. Men have wasted away before this magic mirror, deluded by their own lights.”\nThe Mirror of Erased is a magical",
+      "base_model_answer": "The Mirror of Erisid shows your deepest, most innermost desires.",
+      "correct_answer": "The deepest, most desperate desire of a person's heart."
+    }
+  ]
+}

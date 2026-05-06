@@ -1,0 +1,17 @@
+{
+  "run_dir": "selective_unlearning_runs/hp/emotion",
+  "selection": "emotion",
+  "dry_run": false,
+  "selected_forget_chunks": 500,
+  "train_chunk_count": 3293,
+  "eval_chunk_count": 366,
+  "source_result_files": [
+    "results/hp/emotion/volatility_results_j-hartmann_emotion-english-distilroberta-base.json"
+  ],
+  "base_hp_perplexity": 3.2485676834999246,
+  "unlearn_hp_perplexity": 4.4742625660716335,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.60207803891398,
+  "base_anchor_recall": 0.06641264212748531,
+  "unlearn_anchor_recall": 0.03698499158963248
+}

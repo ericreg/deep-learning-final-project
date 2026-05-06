@@ -17,6 +17,7 @@ dependencies = [
     "transformers>=5.7.0",
     "structlog>=25.5.0",
     "seaborn>=0.13.2",
+    "lm-eval>=0.4.11",
 ]
 
 # Optional dependencies for development and testing. Install with `uv sync --group dev`.

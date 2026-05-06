@@ -1,0 +1,36 @@
+{
+  "created_at": "2026-05-06T04:19:04.848264+00:00",
+  "run_dir": "selective_unlearning_runs/hp/random",
+  "adapter_root": "selective_unlearning_runs/hp/random/unlearned_adapter",
+  "adapter_path": "selective_unlearning_runs/hp/random/unlearned_adapter/unlearn",
+  "adapter_name": "unlearn",
+  "model_id": "meta-llama/Meta-Llama-3-8B",
+  "tasks": [
+    "arc_easy",
+    "boolq",
+    "winogrande"
+  ],
+  "task_labels": {
+    "arc_easy": "ARC-Easy",
+    "boolq": "BoolQ",
+    "winogrande": "Winogrande"
+  },
+  "dtype": "bfloat16",
+  "device": "cuda:0",
+  "batch_size": "8",
+  "limit": 100,
+  "num_fewshot": 0,
+  "scores": {
+    "base": {
+      "arc_easy": 0.82,
+      "boolq": 0.8,
+      "winogrande": 0.74
+    },
+    "unlearned": {
+      "arc_easy": 0.81,
+      "boolq": 0.8,
+      "winogrande": 0.75
+    }
+  },
+  "elapsed_seconds": 33.6687417380017
+}

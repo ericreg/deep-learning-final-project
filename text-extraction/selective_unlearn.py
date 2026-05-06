@@ -1,11 +1,11 @@
 import json
 import math
 import random
+import shutil
 import time
 from collections.abc import Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -718,9 +718,21 @@ def generate_samples(
     return samples
 
 
-def make_run_dir(output_dir: Path, selection: str) -> Path:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = output_dir / f"{selection}_{timestamp}"
+def corpus_run_name(results_dir: Path) -> str:
+    """Return the corpus folder name to use for run artifacts."""
+    name = results_dir.name
+    if name == "iliad":
+        return "iliad"
+    return name
+
+
+def make_run_dir(output_dir: Path, results_dir: Path, selection: str) -> Path:
+    run_dir = output_dir / corpus_run_name(results_dir) / selection
+    if run_dir.exists() or run_dir.is_symlink():
+        if run_dir.is_dir() and not run_dir.is_symlink():
+            shutil.rmtree(run_dir)
+        else:
+            run_dir.unlink()
     run_dir.mkdir(parents=True, exist_ok=False)
     return run_dir
 
@@ -819,7 +831,7 @@ def build_summary(metrics: dict[str, Any], run_dir: Path) -> dict[str, Any]:
 @click.option("--generate-samples/--no-generate-samples", default=False, show_default=True)
 @click.option("--sample-max-new-tokens", default=80, show_default=True, type=click.IntRange(min=1))
 def cli(**kwargs):
-    """Run selective Harry Potter unlearning from precomputed text-extraction results."""
+    """Run selective unlearning from precomputed text-extraction results."""
     started = time.perf_counter()
     set_seed(kwargs["seed"])
 
@@ -861,7 +873,7 @@ def cli(**kwargs):
             "Rerun text_extract.py and make sure the analysis JSONs match the same chunks.json file."
         )
 
-    run_dir = make_run_dir(kwargs["output_dir"], selection)
+    run_dir = make_run_dir(kwargs["output_dir"], kwargs["results_dir"], selection)
     config = dict(kwargs)
     config["run_dir"] = run_dir
     config["source_result_files"] = source_files
@@ -873,6 +885,7 @@ def cli(**kwargs):
         "top_n": kwargs["top_n"],
         "chunks_file": str(kwargs["chunks_file"]),
         "source_result_files": source_files,
+        "total_target_chunks": len(hp_chunks),
         "total_hp_chunks": len(hp_chunks),
         "train_chunk_count": len(train_chunks),
         "eval_chunk_count": len(eval_chunks),
@@ -889,6 +902,7 @@ def cli(**kwargs):
         "run_dir": str(run_dir),
         "chunks_file": str(kwargs["chunks_file"]),
         "source_result_files": source_files,
+        "total_target_chunks": len(hp_chunks),
         "total_hp_chunks": len(hp_chunks),
         "train_chunk_count": len(train_chunks),
         "eval_chunk_count": len(eval_chunks),
@@ -900,7 +914,7 @@ def cli(**kwargs):
 
     click.echo(
         f"Selected {len(selected_manifest)} forget chunks "
-        f"from {len(train_chunks)} train chunks; held out {len(eval_chunks)} HP eval chunks."
+        f"from {len(train_chunks)} train chunks; held out {len(eval_chunks)} target eval chunks."
     )
 
     if kwargs["dry_run"]:

@@ -1,0 +1,17 @@
+{
+  "run_dir": "selective_unlearning_runs/iliad/emotion",
+  "selection": "emotion",
+  "dry_run": false,
+  "selected_forget_chunks": 447,
+  "train_chunk_count": 453,
+  "eval_chunk_count": 50,
+  "source_result_files": [
+    "results/iliad/emotion/volatility_results_j-hartmann_emotion-english-distilroberta-base.json"
+  ],
+  "base_hp_perplexity": 16.1288102306615,
+  "unlearn_hp_perplexity": 28.696936523003092,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.376754952275485,
+  "base_anchor_recall": 0.06227469869602847,
+  "unlearn_anchor_recall": 0.01649067867632796
+}

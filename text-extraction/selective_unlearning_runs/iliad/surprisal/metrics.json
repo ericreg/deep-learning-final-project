@@ -1,0 +1,32 @@
+{
+  "selection": "surprisal",
+  "dry_run": false,
+  "run_dir": "selective_unlearning_runs/iliad/surprisal",
+  "chunks_file": "results/iliad/chunks.json",
+  "source_result_files": [
+    "results/iliad/surprisal/surprisal_results_BAAI_bge-base-en-v1.5.json"
+  ],
+  "total_target_chunks": 503,
+  "total_hp_chunks": 503,
+  "train_chunk_count": 453,
+  "eval_chunk_count": 50,
+  "control_chunk_count": 1,
+  "selected_forget_chunks": 447,
+  "skipped_selection_count": 50,
+  "elapsed_seconds": 805.2184082540007,
+  "reinforced_adapter_dir": "selective_unlearning_runs/iliad/surprisal/reinforced_adapter",
+  "unlearned_adapter_dir": "selective_unlearning_runs/iliad/surprisal/unlearned_adapter",
+  "reinforced_loss_last": 2.653989791870117,
+  "unlearn_loss_last": 0.51953125,
+  "training_seconds": 785.4597799099993,
+  "base_hp_perplexity": 16.1288102306615,
+  "unlearn_hp_perplexity": 29.32978992977818,
+  "base_control_perplexity": 12.895904748065307,
+  "unlearn_control_perplexity": 13.352952330836194,
+  "anchor_recall": {
+    "evaluated_chunks": 50,
+    "total_anchor_tokens": 2174,
+    "base_anchor_recall": 0.06642779857602382,
+    "unlearn_anchor_recall": 0.018635559390107168
+  }
+}

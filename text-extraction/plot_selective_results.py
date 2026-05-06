@@ -28,6 +28,7 @@ COLORS = [NOTEBOOK_BLUE, NOTEBOOK_RED, NOTEBOOK_GREEN, NOTEBOOK_ORANGE, NOTEBOOK
 class RunResult:
     run_dir: Path
     run_name: str
+    results_dir: Path | None
     selection: str
     dry_run: bool
     selected_forget_chunks: int | None
@@ -82,6 +83,33 @@ def as_int(value: Any) -> int | None:
     return None
 
 
+def normalize_path(path: Path) -> Path:
+    path = path.expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    return path.resolve(strict=False)
+
+
+def config_results_dir(config: dict[str, Any]) -> Path | None:
+    results_dir = config.get("results_dir")
+    if isinstance(results_dir, str) and results_dir:
+        return Path(results_dir)
+
+    chunks_file = config.get("chunks_file")
+    if isinstance(chunks_file, str) and chunks_file:
+        return Path(chunks_file).parent
+
+    return None
+
+
+def results_dir_matches(run_results_dir: Path | None, requested_results_dir: Path | None) -> bool:
+    if requested_results_dir is None:
+        return True
+    if run_results_dir is None:
+        return False
+    return normalize_path(run_results_dir) == normalize_path(requested_results_dir)
+
+
 def load_run(run_dir: Path) -> RunResult | None:
     summary_path = run_dir / "summary.json"
     if not summary_path.exists():
@@ -90,6 +118,8 @@ def load_run(run_dir: Path) -> RunResult | None:
     summary = read_json(summary_path)
     metrics_path = run_dir / "metrics.json"
     metrics = read_json(metrics_path) if metrics_path.exists() else {}
+    config_path = run_dir / "config.json"
+    config = read_json(config_path) if config_path.exists() else {}
 
     anchor = metrics.get("anchor_recall", {}) if isinstance(metrics.get("anchor_recall"), dict) else {}
     selection = str(summary.get("selection") or metrics.get("selection") or run_dir.name.split("_", 1)[0])
@@ -97,6 +127,7 @@ def load_run(run_dir: Path) -> RunResult | None:
     return RunResult(
         run_dir=run_dir,
         run_name=run_dir.name,
+        results_dir=config_results_dir(config),
         selection=selection,
         dry_run=bool(summary.get("dry_run", metrics.get("dry_run", False))),
         selected_forget_chunks=as_int(summary.get("selected_forget_chunks", metrics.get("selected_forget_chunks"))),
@@ -120,11 +151,25 @@ def load_run(run_dir: Path) -> RunResult | None:
     )
 
 
-def discover_runs(runs_dir: Path, include_dry_runs: bool, latest_per_selection: bool) -> list[RunResult]:
+def summary_mtime(run: RunResult) -> float:
+    try:
+        return (run.run_dir / "summary.json").stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def discover_runs(
+    runs_dir: Path,
+    include_dry_runs: bool,
+    latest_per_selection: bool,
+    results_dir: Path | None = None,
+) -> list[RunResult]:
     runs = []
-    for summary_path in sorted(runs_dir.glob("*/summary.json")):
+    for summary_path in sorted(runs_dir.glob("**/summary.json")):
         run = load_run(summary_path.parent)
         if run is None:
+            continue
+        if not results_dir_matches(run.results_dir, results_dir):
             continue
         if run.dry_run and not include_dry_runs:
             continue
@@ -135,7 +180,9 @@ def discover_runs(runs_dir: Path, include_dry_runs: bool, latest_per_selection: 
     if latest_per_selection:
         by_selection = {}
         for run in runs:
-            by_selection[run.selection] = run
+            current = by_selection.get(run.selection)
+            if current is None or summary_mtime(run) >= summary_mtime(current):
+                by_selection[run.selection] = run
         runs = [by_selection[key] for key in sorted(by_selection)]
 
     return sorted(runs, key=lambda run: (run.selection, run.run_name))
@@ -219,7 +266,7 @@ def plot_core_metrics(runs: Sequence[RunResult], output_dir: Path) -> Path:
             [run.unlearn_anchor_recall for run in runs],
         ),
         (
-            "HP Perplexity ↑",
+            "Target Perplexity ↑",
             "Higher after unlearning = more forgotten",
             [run.base_hp_perplexity for run in runs],
             [run.unlearn_hp_perplexity for run in runs],
@@ -266,7 +313,7 @@ def plot_strategy_deltas(runs: Sequence[RunResult], output_dir: Path) -> Path:
 
     panels = [
         (axes[0, 0], [run.anchor_recall_delta for run in runs], "Anchor Recall Change ↓", "Unlearned - Base"),
-        (axes[0, 1], [run.hp_ppl_delta for run in runs], "HP Perplexity Change ↑", "Unlearned - Base"),
+        (axes[0, 1], [run.hp_ppl_delta for run in runs], "Target Perplexity Change ↑", "Unlearned - Base"),
         (axes[1, 0], [run.control_ppl_delta for run in runs], "Control Perplexity Change →", "Unlearned - Base"),
         (
             axes[1, 1],
@@ -344,6 +391,7 @@ def write_summary_csv(runs: Sequence[RunResult], output_dir: Path) -> Path:
     path = output_dir / "selective_unlearning_summary.csv"
     fields = [
         "run_name",
+        "results_dir",
         "selection",
         "selected_forget_chunks",
         "train_chunk_count",
@@ -368,6 +416,7 @@ def write_summary_csv(runs: Sequence[RunResult], output_dir: Path) -> Path:
             writer.writerow(
                 {
                     "run_name": run.run_name,
+                    "results_dir": run.results_dir,
                     "selection": run.selection,
                     "selected_forget_chunks": run.selected_forget_chunks,
                     "train_chunk_count": run.train_chunk_count,
@@ -411,22 +460,47 @@ def natural_run_sort_key(path: Path) -> tuple[str, str]:
     help="Directory for generated figures and CSV summary.",
 )
 @click.option(
+    "--results-dir",
+    default=None,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Only plot runs whose selective_unlearn.py config used this results directory, e.g. results/bible.",
+)
+@click.option(
     "--latest-per-selection/--all-runs",
     default=True,
     show_default=True,
     help="Plot only the newest completed run per selection, or every completed run.",
 )
 @click.option("--include-dry-runs", is_flag=True, help="Include dry-run summaries if they have plottable metrics.")
-def cli(runs_dir: Path, output_dir: Path, latest_per_selection: bool, include_dry_runs: bool):
+def cli(
+    runs_dir: Path,
+    output_dir: Path,
+    results_dir: Path | None,
+    latest_per_selection: bool,
+    include_dry_runs: bool,
+):
     """Plot selective unlearning results from run JSON outputs."""
-    runs = discover_runs(runs_dir, include_dry_runs=include_dry_runs, latest_per_selection=latest_per_selection)
+    if results_dir is not None and output_dir == DEFAULT_OUTPUT_DIR:
+        output_dir = output_dir / results_dir.name
+
+    runs = discover_runs(
+        runs_dir,
+        include_dry_runs=include_dry_runs,
+        latest_per_selection=latest_per_selection,
+        results_dir=results_dir,
+    )
     if not runs:
-        raise click.ClickException(f"No completed run summaries with plottable metrics found under {runs_dir}.")
+        message = f"No completed run summaries with plottable metrics found under {runs_dir}"
+        if results_dir is not None:
+            message += f" for results directory {results_dir}"
+        raise click.ClickException(f"{message}.")
 
     runs = sorted(runs, key=lambda run: natural_run_sort_key(run.run_dir))
-    click.echo(f"Plotting {len(runs)} run(s):")
+    scope = f" for {results_dir}" if results_dir is not None else ""
+    click.echo(f"Plotting {len(runs)} run(s){scope}:")
     for run in runs:
-        click.echo(f"  - {run.run_name}: {run.selected_forget_chunks} forget chunks")
+        run_scope = f" [{run.results_dir}]" if run.results_dir is not None else ""
+        click.echo(f"  - {run.run_name}{run_scope}: {run.selected_forget_chunks} forget chunks")
 
     outputs = [
         plot_core_metrics(runs, output_dir),
